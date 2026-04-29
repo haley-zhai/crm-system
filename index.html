@@ -649,10 +649,10 @@
                 trendChart = new Chart(trendCtx, {
                     type: 'line',
                     data: {
-                        labels: data.monthlyTrend.map(t => t.month),
+                        labels: data.monthlyTrends.map(t => t.month),
                         datasets: [{
                             label: '拜访次数',
-                            data: data.monthlyTrend.map(t => t.count),
+                            data: data.monthlyTrends.map(t => t.count),
                             borderColor: '#0f3460',
                             backgroundColor: 'rgba(15, 52, 96, 0.1)',
                             fill: true,
@@ -942,11 +942,18 @@
         
         async function loadReports() {
             try {
-                const res = await fetch(`${API_BASE}/api/dashboard`);
-                const result = await res.json();
-                if (!result.success) return;
+                // 获取销售人员排行数据
+                const salesRes = await fetch(`${API_BASE}/api/statistics/sales`);
+                const salesResult = await salesRes.json();
                 
-                const data = result.data;
+                // 获取客户来源分布数据（从dashboard）
+                const dashRes = await fetch(`${API_BASE}/api/dashboard`);
+                const dashResult = await dashRes.json();
+                
+                if (!salesResult.success || !dashResult.success) return;
+                
+                const salesData = salesResult.data;
+                const dashData = dashResult.data;
                 
                 // 销售人员拜访排行
                 const salesCtx = document.getElementById('salesChart').getContext('2d');
@@ -954,16 +961,16 @@
                 salesChart = new Chart(salesCtx, {
                     type: 'bar',
                     data: {
-                        labels: data.salesStats.map(s => s.sales_person),
+                        labels: salesData.map(s => s.sales_person),
                         datasets: [
                             {
                                 label: '拜访次数',
-                                data: data.salesStats.map(s => s.visit_count),
+                                data: salesData.map(s => s.visit_count),
                                 backgroundColor: '#0f3460'
                             },
                             {
                                 label: '覆盖客户',
-                                data: data.salesStats.map(s => s.customer_count),
+                                data: salesData.map(s => s.customer_count),
                                 backgroundColor: '#16c79a'
                             }
                         ]
@@ -971,7 +978,20 @@
                     options: { responsive: true, maintainAspectRatio: true }
                 });
                 
-                // TODO: 客户来源分布 - 需要后端提供数据
+                // 客户来源分布饼图
+                const sourceCtx = document.getElementById('sourceChart').getContext('2d');
+                if (sourceChart) sourceChart.destroy();
+                sourceChart = new Chart(sourceCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: dashData.customerStats.sources?.map(s => s.source) || [],
+                        datasets: [{
+                            data: dashData.customerStats.sources?.map(s => s.count) || [],
+                            backgroundColor: ['#0f3460', '#16c79a', '#f4a261', '#e94560', '#adb5bd', '#6c757d']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: true }
+                });
             } catch (e) {
                 console.error('加载报表失败', e);
             }
