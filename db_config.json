@@ -1,0 +1,7 @@
+{
+  "host": "115.191.56.155",
+  "port": 3306,
+  "database": "app_db",
+  "user": "app_user",
+  "password": "AppPass456!"
+}

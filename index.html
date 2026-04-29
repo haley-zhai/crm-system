@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>客户管理系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+        
+        /* 布局 */
+        .app { display: flex; min-height: 100vh; }
+        .sidebar {
+            width: 220px;
+            background: #1a1a2e;
+            color: #fff;
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        .logo {
+            padding: 0 20px 20px;
+            font-size: 20px;
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+            margin-bottom: 15px;
+        }
+        .nav-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .nav-item:hover { background: #16213e; }
+        .nav-item.active { background: #0f3460; border-left: 3px solid #e94560; }
+        .nav-icon { font-size: 18px; }
+        
+        .main-content {
+            flex: 1;
+            margin-left: 220px;
+            padding: 20px;
+        }
+        
+        /* 头部 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .header h1 { font-size: 24px; color: #1a1a2e; }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .btn-primary { background: #0f3460; color: #fff; }
+        .btn-primary:hover { background: #1a5490; }
+        .btn-danger { background: #e94560; color: #fff; }
+        .btn-success { background: #16c79a; color: #fff; }
+        .btn-sm { padding: 5px 12px; font-size: 13px; }
+        
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .stat-card .label { color: #888; font-size: 14px; margin-bottom: 8px; }
+        .stat-card .value { font-size: 32px; font-weight: bold; color: #1a1a2e; }
+        .stat-card .change { font-size: 12px; color: #16c79a; margin-top: 5px; }
+        
+        /* 图表区域 */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .chart-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .chart-card h3 { font-size: 16px; margin-bottom: 15px; color: #555; }
+        
+        /* 表格 */
+        .table-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+        }
+        .search-box input, .search-box select {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th { background: #f8f9fa; font-weight: 600; color: #555; font-size: 13px; }
+        tr:hover { background: #f8f9fa; }
+        .status-badge {
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            display: inline-block;
+        }
+        .status-active { background: #d4edda; color: #155724; }
+        .status-potential { background: #fff3cd; color: #856404; }
+        .status-inactive { background: #f8d7da; color: #721c24; }
+        .status-lost { background: #e2e3e5; color: #383d41; }
+        
+        .actions { display: flex; gap: 5px; }
+        
+        /* 分页 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .pagination button {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination .active { background: #0f3460; color: #fff; }
+        
+        /* 模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-header h2 { font-size: 20px; }
+        .close-btn {
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #555;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .sidebar { width: 60px; }
+            .sidebar .logo { font-size: 0; }
+            .nav-item span { display: none; }
+            .main-content { margin-left: 60px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .chart-grid { grid-template-columns: 1fr; }
+        }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- 侧边栏 -->
+        <div class="sidebar">
+            <div class="logo">📊 CRM系统</div>
+            <div class="nav-item active" onclick="showPage('dashboard', this)">
+                <span class="nav-icon">📈</span>
+                <span>仪表盘</span>
+            </div>
+            <div class="nav-item" onclick="showPage('customers', this)">
+                <span class="nav-icon">👥</span>
+                <span>客户管理</span>
+            </div>
+            <div class="nav-item" onclick="showPage('visits', this)">
+                <span class="nav-icon">📅</span>
+                <span>拜访记录</span>
+            </div>
+            <div class="nav-item" onclick="showPage('reports', this)">
+                <span class="nav-icon">📋</span>
+                <span>统计报表</span>
+            </div>
+        </div>
+        
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 仪表盘页面 -->
+            <div id="dashboard-page" class="page">
+                <div class="header">
+                    <h1>仪表盘</h1>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="label">总客户数</div>
+                        <div class="value" id="stat-total">0</div>
+                        <div class="change">↑ 本月新增 <span id="stat-new">0</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">活跃客户</div>
+                        <div class="value" id="stat-active">0</div>
+                        <div class="change">占比 <span id="stat-active-rate">0%</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">潜在客户</div>
+                        <div class="value" id="stat-potential">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">本月拜访</div>
+                        <div class="value" id="stat-visits">0</div>
+                        <div class="change">拜访次数</div>
+                    </div>
+                </div>
+                
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <h3>客户状态分布</h3>
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>行业分布</h3>
+                        <canvas id="industryChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <h3>月度拜访趋势</h3>
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- 客户管理页面 -->
+            <div id="customers-page" class="page hidden">
+                <div class="header">
+                    <h1>客户管理</h1>
+                    <button class="btn btn-primary" onclick="showCustomerModal()">+ 新增客户</button>
+                </div>
+                
+                <div class="table-card">
+                    <div class="table-header">
+                        <div class="search-box">
+                            <input type="text" id="customerSearch" placeholder="搜索客户姓名/公司/电话" onkeyup="searchCustomers()">
+                            <select id="statusFilter" onchange="searchCustomers()">
+                                <option value="">全部状态</option>
+                                <option value="active">活跃</option>
+                                <option value="potential">潜在</option>
+                                <option value="inactive">停用</option>
+                                <option value="lost">流失</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>姓名</th>
+                                <th>公司</th>
+                                <th>行业</th>
+                                <th>电话</th>
+                                <th>状态</th>
+                                <th>拜访次数</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customerTable"></tbody>
+                    </table>
+                    
+                    <div class="pagination" id="customerPagination"></div>
+                </div>
+            </div>
+            
+            <!-- 拜访记录页面 -->
+            <div id="visits-page" class="page hidden">
+                <div class="header">
+                    <h1>拜访记录</h1>
+                    <button class="btn btn-primary" onclick="showVisitModal()">+ 新增拜访</button>
+                </div>
+                
+                <div class="table-card">
+                    <div class="table-header">
+                        <div class="search-box">
+                            <input type="date" id="visitStartDate" onchange="searchVisits()">
+                            <input type="date" id="visitEndDate" onchange="searchVisits()">
+                            <select id="visitSalesFilter" onchange="searchVisits()">
+                                <option value="">全部销售</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>客户</th>
+                                <th>公司</th>
+                                <th>拜访日期</th>
+                                <th>类型</th>
+                                <th>拜访内容</th>
+                                <th>销售人员</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="visitTable"></tbody>
+                    </table>
+                    
+                    <div class="pagination" id="visitPagination"></div>
+                </div>
+            </div>
+            
+            <!-- 统计报表页面 -->
+            <div id="reports-page" class="page hidden">
+                <div class="header">
+                    <h1>统计报表</h1>
+                </div>
+                
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <h3>销售人员拜访排行</h3>
+                        <canvas id="salesChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>客户来源分布</h3>
+                        <canvas id="sourceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 客户编辑模态框 -->
+    <div class="modal" id="customerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="customerModalTitle">新增客户</h2>
+                <span class="close-btn" onclick="closeModal('customerModal')">&times;</span>
+            </div>
+            <form id="customerForm" onsubmit="saveCustomer(event)">
+                <input type="hidden" id="customerId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>客户姓名 *</label>
+                        <input type="text" id="custName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>公司名称</label>
+                        <input type="text" id="custCompany">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>联系电话</label>
+                        <input type="text" id="custPhone">
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="custEmail">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>行业</label>
+                        <input type="text" id="custIndustry" list="industryList">
+                        <datalist id="industryList">
+                            <option value="互联网">
+                            <option value="制造业">
+                            <option value="贸易">
+                            <option value="教育">
+                            <option value="医疗">
+                            <option value="建筑">
+                            <option value="物流">
+                            <option value="咨询">
+                            <option value="金融">
+                            <option value="其他">
+                        </datalist>
+                    </div>
+                    <div class="form-group">
+                        <label>客户状态</label>
+                        <select id="custStatus">
+                            <option value="potential">潜在客户</option>
+                            <option value="active">活跃客户</option>
+                            <option value="inactive">停用</option>
+                            <option value="lost">流失</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>地址</label>
+                    <input type="text" id="custAddress">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>客户来源</label>
+                        <select id="custSource">
+                            <option value="">请选择</option>
+                            <option value="官网注册">官网注册</option>
+                            <option value="展会">展会</option>
+                            <option value="电话营销">电话营销</option>
+                            <option value="地推">地推</option>
+                            <option value="转介绍">转介绍</option>
+                            <option value="社交媒体">社交媒体</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>备注</label>
+                    <textarea id="custRemark"></textarea>
+                </div>
+                <div style="text-align: right;">
+                    <button type="button" class="btn" onclick="closeModal('customerModal')">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 拜访记录模态框 -->
+    <div class="modal" id="visitModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="visitModalTitle">新增拜访记录</h2>
+                <span class="close-btn" onclick="closeModal('visitModal')">&times;</span>
+            </div>
+            <form id="visitForm" onsubmit="saveVisit(event)">
+                <input type="hidden" id="visitId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>客户 *</label>
+                        <select id="visitCustomerId" required>
+                            <option value="">请选择客户</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>拜访日期 *</label>
+                        <input type="date" id="visitDate" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>拜访类型</label>
+                        <select id="visitType">
+                            <option value="visit">上门拜访</option>
+                            <option value="phone">电话沟通</option>
+                            <option value="email">邮件往来</option>
+                            <option value="meeting">会议</option>
+                            <option value="other">其他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>销售人员</label>
+                        <input type="text" id="visitSalesPerson" placeholder="销售A">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>拜访内容</label>
+                    <textarea id="visitContent" placeholder="记录拜访的主要内容..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>拜访结果</label>
+                    <textarea id="visitResult" placeholder="记录拜访的成果..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>下一步计划</label>
+                    <textarea id="visitNextPlan" placeholder="记录后续跟进计划..."></textarea>
+                </div>
+                <div style="text-align: right;">
+                    <button type="button" class="btn" onclick="closeModal('visitModal')">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://115.191.56.155:3002';
+        
+        // 状态映射
+        const statusMap = {
+            active: { text: '活跃', class: 'status-active' },
+            potential: { text: '潜在', class: 'status-potential' },
+            inactive: { text: '停用', class: 'status-inactive' },
+            lost: { text: '流失', class: 'status-lost' }
+        };
+        
+        const visitTypeMap = {
+            visit: '上门拜访',
+            phone: '电话沟通',
+            email: '邮件往来',
+            meeting: '会议',
+            other: '其他'
+        };
+        
+        // 页面切换
+        function showPage(page, navItem) {
+            document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+            document.getElementById(page + '-page').classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            navItem.classList.add('active');
+            
+            if (page === 'dashboard') loadDashboard();
+            if (page === 'customers') loadCustomers();
+            if (page === 'visits') loadVisits();
+            if (page === 'reports') loadReports();
+        }
+        
+        // 关闭模态框
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('show');
+        }
+        
+        // ========== 仪表盘 ==========
+        let statusChart, industryChart, trendChart;
+        
+        async function loadDashboard() {
+            try {
+                const res = await fetch(`${API_BASE}/api/dashboard`);
+                const result = await res.json();
+                if (!result.success) return;
+                
+                const data = result.data;
+                
+                // 更新统计数字
+                document.getElementById('stat-total').textContent = data.customerStats.total_customers;
+                document.getElementById('stat-new').textContent = data.newCustomers;
+                document.getElementById('stat-active').textContent = data.customerStats.active_customers;
+                document.getElementById('stat-active-rate').textContent = 
+                    Math.round(data.customerStats.active_customers / data.customerStats.total_customers * 100) + '%';
+                document.getElementById('stat-potential').textContent = data.customerStats.potential_customers;
+                document.getElementById('stat-visits').textContent = data.monthlyVisits;
+                
+                // 客户状态分布饼图
+                const statusCtx = document.getElementById('statusChart').getContext('2d');
+                if (statusChart) statusChart.destroy();
+                statusChart = new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.statusDistribution.map(s => statusMap[s.status]?.text || s.status),
+                        datasets: [{
+                            data: data.statusDistribution.map(s => s.count),
+                            backgroundColor: ['#16c79a', '#f4a261', '#e94560', '#adb5bd']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: true }
+                });
+                
+                // 行业分布柱状图
+                const industryCtx = document.getElementById('industryChart').getContext('2d');
+                if (industryChart) industryChart.destroy();
+                industryChart = new Chart(industryCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.industryDistribution.map(i => i.industry),
+                        datasets: [{
+                            label: '客户数量',
+                            data: data.industryDistribution.map(i => i.count),
+                            backgroundColor: '#0f3460'
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: true }
+                });
+                
+                // 月度拜访趋势折线图
+                const trendCtx = document.getElementById('trendChart').getContext('2d');
+                if (trendChart) trendChart.destroy();
+                trendChart = new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels: data.monthlyTrend.map(t => t.month),
+                        datasets: [{
+                            label: '拜访次数',
+                            data: data.monthlyTrend.map(t => t.count),
+                            borderColor: '#0f3460',
+                            backgroundColor: 'rgba(15, 52, 96, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: true }
+                });
+            } catch (e) {
+                console.error('加载仪表盘失败', e);
+            }
+        }
+        
+        // ========== 客户管理 ==========
+        let customerPage = 1;
+        let customerPageSize = 20;
+        
+        async function loadCustomers(page = 1) {
+            customerPage = page;
+            const keyword = document.getElementById('customerSearch')?.value || '';
+            const status = document.getElementById('statusFilter')?.value || '';
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/customers?page=${page}&pageSize=${customerPageSize}&keyword=${keyword}&status=${status}`);
+                const result = await res.json();
+                if (!result.success) return;
+                
+                const tbody = document.getElementById('customerTable');
+                tbody.innerHTML = result.data.map(c => `
+                    <tr>
+                        <td>${c.id}</td>
+                        <td>${escapeHtml(c.name)}</td>
+                        <td>${escapeHtml(c.company || '-')}</td>
+                        <td>${escapeHtml(c.industry || '-')}</td>
+                        <td>${escapeHtml(c.phone || '-')}</td>
+                        <td><span class="status-badge ${statusMap[c.status]?.class || ''}">${statusMap[c.status]?.text || c.status}</span></td>
+                        <td>${c.visit_count || 0}</td>
+                        <td class="actions">
+                            <button class="btn btn-sm btn-success" onclick="editCustomer(${c.id})">编辑</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteCustomer(${c.id})">删除</button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                // 分页
+                const totalPages = Math.ceil(result.total / customerPageSize);
+                const pagination = document.getElementById('customerPagination');
+                let html = `<button onclick="loadCustomers(${page - 1})" ${page <= 1 ? 'disabled' : ''}>上一页</button>`;
+                for (let i = 1; i <= totalPages; i++) {
+                    html += `<button class="${i === page ? 'active' : ''}" onclick="loadCustomers(${i})">${i}</button>`;
+                }
+                html += `<button onclick="loadCustomers(${page + 1})" ${page >= totalPages ? 'disabled' : ''}>下一页</button>`;
+                pagination.innerHTML = html;
+            } catch (e) {
+                console.error('加载客户列表失败', e);
+            }
+        }
+        
+        function searchCustomers() {
+            loadCustomers(1);
+        }
+        
+        function showCustomerModal(customer = null) {
+            document.getElementById('customerModalTitle').textContent = customer ? '编辑客户' : '新增客户';
+            document.getElementById('customerId').value = customer?.id || '';
+            document.getElementById('custName').value = customer?.name || '';
+            document.getElementById('custCompany').value = customer?.company || '';
+            document.getElementById('custPhone').value = customer?.phone || '';
+            document.getElementById('custEmail').value = customer?.email || '';
+            document.getElementById('custAddress').value = customer?.address || '';
+            document.getElementById('custIndustry').value = customer?.industry || '';
+            document.getElementById('custStatus').value = customer?.status || 'potential';
+            document.getElementById('custSource').value = customer?.source || '';
+            document.getElementById('custRemark').value = customer?.remark || '';
+            document.getElementById('customerModal').classList.add('show');
+        }
+        
+        async function editCustomer(id) {
+            try {
+                const res = await fetch(`${API_BASE}/api/customers/${id}`);
+                const result = await res.json();
+                if (result.success) showCustomerModal(result.data);
+            } catch (e) {
+                alert('加载客户信息失败');
+            }
+        }
+        
+        async function saveCustomer(e) {
+            e.preventDefault();
+            const id = document.getElementById('customerId').value;
+            const data = {
+                name: document.getElementById('custName').value,
+                company: document.getElementById('custCompany').value,
+                phone: document.getElementById('custPhone').value,
+                email: document.getElementById('custEmail').value,
+                address: document.getElementById('custAddress').value,
+                industry: document.getElementById('custIndustry').value,
+                status: document.getElementById('custStatus').value,
+                source: document.getElementById('custSource').value,
+                remark: document.getElementById('custRemark').value
+            };
+            
+            try {
+                const url = id ? `${API_BASE}/api/customers/${id}` : `${API_BASE}/api/customers`;
+                const method = id ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    closeModal('customerModal');
+                    loadCustomers(customerPage);
+                } else {
+                    alert(result.error || '保存失败');
+                }
+            } catch (e) {
+                alert('保存失败');
+            }
+        }
+        
+        async function deleteCustomer(id) {
+            if (!confirm('确定要删除该客户吗？相关拜访记录也会被删除。')) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/customers/${id}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) loadCustomers(customerPage);
+            } catch (e) {
+                alert('删除失败');
+            }
+        }
+        
+        // ========== 拜访记录 ==========
+        let visitPage = 1;
+        let visitPageSize = 20;
+        
+        async function loadVisits(page = 1) {
+            visitPage = page;
+            const startDate = document.getElementById('visitStartDate')?.value || '';
+            const endDate = document.getElementById('visitEndDate')?.value || '';
+            const salesPerson = document.getElementById('visitSalesFilter')?.value || '';
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/visits?page=${page}&pageSize=${visitPageSize}&start_date=${startDate}&end_date=${endDate}&sales_person=${salesPerson}`);
+                const result = await res.json();
+                if (!result.success) return;
+                
+                const tbody = document.getElementById('visitTable');
+                tbody.innerHTML = result.data.map(v => `
+                    <tr>
+                        <td>${v.id}</td>
+                        <td>${escapeHtml(v.customer_name)}</td>
+                        <td>${escapeHtml(v.company || '-')}</td>
+                        <td>${v.visit_date}</td>
+                        <td>${visitTypeMap[v.visit_type] || v.visit_type}</td>
+                        <td>${escapeHtml(v.content?.substring(0, 50) || '-')}...</td>
+                        <td>${escapeHtml(v.sales_person || '-')}</td>
+                        <td class="actions">
+                            <button class="btn btn-sm btn-success" onclick="editVisit(${v.id})">编辑</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteVisit(${v.id})">删除</button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                // 分页
+                const totalPages = Math.ceil(result.total / visitPageSize);
+                const pagination = document.getElementById('visitPagination');
+                let html = `<button onclick="loadVisits(${page - 1})" ${page <= 1 ? 'disabled' : ''}>上一页</button>`;
+                for (let i = 1; i <= totalPages; i++) {
+                    html += `<button class="${i === page ? 'active' : ''}" onclick="loadVisits(${i})">${i}</button>`;
+                }
+                html += `<button onclick="loadVisits(${page + 1})" ${page >= totalPages ? 'disabled' : ''}>下一页</button>`;
+                pagination.innerHTML = html;
+                
+                // 更新销售人员筛选选项
+                updateSalesFilter(result.data);
+            } catch (e) {
+                console.error('加载拜访记录失败', e);
+            }
+        }
+        
+        function searchVisits() {
+            loadVisits(1);
+        }
+        
+        function updateSalesFilter(visits) {
+            const salesPersons = [...new Set(visits.map(v => v.sales_person).filter(Boolean))];
+            const select = document.getElementById('visitSalesFilter');
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">全部销售</option>';
+            salesPersons.forEach(p => {
+                select.innerHTML += `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`;
+            });
+            select.value = currentValue;
+        }
+        
+        async function loadCustomerOptions() {
+            try {
+                const res = await fetch(`${API_BASE}/api/customers?pageSize=100`);
+                const result = await res.json();
+                if (!result.success) return;
+                
+                const select = document.getElementById('visitCustomerId');
+                select.innerHTML = '<option value="">请选择客户</option>';
+                result.data.forEach(c => {
+                    select.innerHTML += `<option value="${c.id}">${escapeHtml(c.name)} - ${escapeHtml(c.company || '无公司')}</option>`;
+                });
+            } catch (e) {
+                console.error('加载客户选项失败', e);
+            }
+        }
+        
+        function showVisitModal(visit = null) {
+            document.getElementById('visitModalTitle').textContent = visit ? '编辑拜访记录' : '新增拜访记录';
+            document.getElementById('visitId').value = visit?.id || '';
+            document.getElementById('visitCustomerId').value = visit?.customer_id || '';
+            document.getElementById('visitDate').value = visit?.visit_date || new Date().toISOString().split('T')[0];
+            document.getElementById('visitType').value = visit?.visit_type || 'visit';
+            document.getElementById('visitContent').value = visit?.content || '';
+            document.getElementById('visitResult').value = visit?.result || '';
+            document.getElementById('visitNextPlan').value = visit?.next_plan || '';
+            document.getElementById('visitSalesPerson').value = visit?.sales_person || '';
+            document.getElementById('visitModal').classList.add('show');
+            loadCustomerOptions();
+        }
+        
+        async function editVisit(id) {
+            try {
+                const res = await fetch(`${API_BASE}/api/visits?customer_id=&pageSize=100`);
+                const result = await res.json();
+                if (result.success) {
+                    const visit = result.data.find(v => v.id === id);
+                    if (visit) showVisitModal(visit);
+                }
+            } catch (e) {
+                alert('加载拜访记录失败');
+            }
+        }
+        
+        async function saveVisit(e) {
+            e.preventDefault();
+            const id = document.getElementById('visitId').value;
+            const data = {
+                customer_id: document.getElementById('visitCustomerId').value,
+                visit_date: document.getElementById('visitDate').value,
+                visit_type: document.getElementById('visitType').value,
+                content: document.getElementById('visitContent').value,
+                result: document.getElementById('visitResult').value,
+                next_plan: document.getElementById('visitNextPlan').value,
+                sales_person: document.getElementById('visitSalesPerson').value
+            };
+            
+            try {
+                const url = id ? `${API_BASE}/api/visits/${id}` : `${API_BASE}/api/visits`;
+                const method = id ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    closeModal('visitModal');
+                    loadVisits(visitPage);
+                } else {
+                    alert(result.error || '保存失败');
+                }
+            } catch (e) {
+                alert('保存失败');
+            }
+        }
+        
+        async function deleteVisit(id) {
+            if (!confirm('确定要删除该拜访记录吗？')) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/visits/${id}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (result.success) loadVisits(visitPage);
+            } catch (e) {
+                alert('删除失败');
+            }
+        }
+        
+        // ========== 统计报表 ==========
+        let salesChart, sourceChart;
+        
+        async function loadReports() {
+            try {
+                const res = await fetch(`${API_BASE}/api/dashboard`);
+                const result = await res.json();
+                if (!result.success) return;
+                
+                const data = result.data;
+                
+                // 销售人员拜访排行
+                const salesCtx = document.getElementById('salesChart').getContext('2d');
+                if (salesChart) salesChart.destroy();
+                salesChart = new Chart(salesCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.salesStats.map(s => s.sales_person),
+                        datasets: [
+                            {
+                                label: '拜访次数',
+                                data: data.salesStats.map(s => s.visit_count),
+                                backgroundColor: '#0f3460'
+                            },
+                            {
+                                label: '覆盖客户',
+                                data: data.salesStats.map(s => s.customer_count),
+                                backgroundColor: '#16c79a'
+                            }
+                        ]
+                    },
+                    options: { responsive: true, maintainAspectRatio: true }
+                });
+                
+                // TODO: 客户来源分布 - 需要后端提供数据
+            } catch (e) {
+                console.error('加载报表失败', e);
+            }
+        }
+        
+        // 工具函数
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboard();
+        });
+    </script>
+</body>
+</html>
