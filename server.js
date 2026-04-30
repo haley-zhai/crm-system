@@ -313,6 +313,26 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
+// 销售人员拜访统计（独立接口，供统计报表页面使用）
+app.get('/api/statistics/sales', async (req, res) => {
+    try {
+        const [rows] = await pool.execute(`
+            SELECT 
+                sales_person,
+                COUNT(*) as visit_count,
+                COUNT(DISTINCT customer_id) as customer_count
+            FROM visits
+            WHERE sales_person IS NOT NULL AND sales_person != ''
+            GROUP BY sales_person
+            ORDER BY visit_count DESC
+        `);
+        res.json({ success: true, data: rows });
+    } catch (e) {
+        console.error('获取销售统计失败', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // 启动服务
 initPool().then(() => {
     app.listen(PORT, '0.0.0.0', () => {
