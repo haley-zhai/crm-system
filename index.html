@@ -649,10 +649,10 @@
                 trendChart = new Chart(trendCtx, {
                     type: 'line',
                     data: {
-                        labels: data.monthlyTrend.map(t => t.month),
+                        labels: data.monthlyTrends.map(t => t.month),
                         datasets: [{
                             label: '拜访次数',
-                            data: data.monthlyTrend.map(t => t.count),
+                            data: data.monthlyTrends.map(t => t.count),
                             borderColor: '#0f3460',
                             backgroundColor: 'rgba(15, 52, 96, 0.1)',
                             fill: true,

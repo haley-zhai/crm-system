@@ -298,7 +298,7 @@ app.get('/api/dashboard', async (req, res) => {
                 monthlyVisits: monthlyVisits[0].count,
                 industryDistribution: industryDist,
                 statusDistribution: statusDist,
-                monthlyTrend,
+                monthlyTrends,
                 salesStats
             }
         });
